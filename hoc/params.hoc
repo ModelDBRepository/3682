@@ -1,0 +1,17 @@
+// This is useful for interactive simulations, but is the wrong way to
+// define parameters for batch jobs.  Use params.m4 instead.
+
+// Set synaptic conductances.
+synapses_nmda_gmax = 0.10
+synapses_ampa_gmax = 0.05
+
+// Set active conductances.
+active_soma_gnabar = 0.020
+active_soma_gkbar = 0.012
+active_soma_gkmbar = 0
+
+active_dend_gnabar = 0.006
+active_dend_gkbar = 0.0012
+active_dend_gkmbar = 0
+
+global_Ra = 200

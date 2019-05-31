@@ -1,0 +1,31 @@
+This example produces a soma trajectory similar to that shown in fig 7a
+of Archie, K.A. and Mel, B.W. A model of
+intradendritic computation of binocular disparity
+Nature Neuroscience 3:54-63, 2000.  Differences are due to synaptic noise.
+Successive runs will produce different trajectories in response to randomly
+computed synaptic event times.
+
+The out.gif file shows the trajectory first obtained by launching the
+mosinit.hoc file.
+
+This example is based on the files from
+http://www-lnc.usc.edu/~karchie/synmap/ but includes
+a sample geom.Rin and grat_0_0.75.all.in
+(generated from an optimal response grating)
+file to allow autolaunch of the
+example via the mosinit.hoc file. The changes to allow autolaunch consist
+of moving the mod files from a subdirectory to the top level and a test
+in hoc/synapses.hoc to allow automatic loading of the grat...in file.
+
+The code which generates synaptic input files (not present in this
+example but see the Readme_karchie file for a copy of the instructions
+for that package) has been superseded by
+the package at http://www-lnc.usc.edu/snv/
+"SNV is a package for generating realistic spike trains in NEURON
+simulations. Users create stimulus "movies," use linear-nonlinear cascade
+models to generate the response of afferent neurons then map those
+responses into synapses in specified locations on a cell."
+
+Please contact karchie@lnc.usc.edu with questions about the paper, model
+parameters, and usage of the snv system. Contact michael.hines@yale.edu
+for questions about running this example.

@@ -1,0 +1,133 @@
+/* $Id: active.hoc,v 1.2 1999/04/16 00:24:22 karchie Exp $
+ * Insert fast Na+ and K+/DR conductances (from hh3).
+ * Assumes that a cell has been constructed, and the following is true:
+ *  *  A soma named "soma" has been created.
+ *  *  Two lists have been built, "apical_list" and "basal_list".
+ *     The union of these two lists should be the set of all dendritic
+ *     compartments.  These lists should have null intersection, but
+ *     none of the code here breaks if non-null.
+ */
+
+// Somatic peak conductances (S/cm^2)
+active_soma_gnabar = 0.012
+active_soma_gkbar = 0.010
+active_soma_gl = 0.0
+
+// Dendritic peak conductances (S/cm^2)
+active_dend_gnabar = 0.012
+active_dend_gkbar = 0.010
+active_dend_gl = 0.0
+
+// Axon peak conductances (S/cm^2)
+active_axon_gnabar = 0.120
+active_axon_gkbar = 0.100
+active_axon_gl = 0.0
+
+// Cutoff distances (in um) for active conductances: dendrites have no
+// active conductances nearer to the soma than the cutoff.
+active_apical_cutoff = 0
+active_basal_cutoff  = 0
+
+
+/*
+ * active_set_conductances(breakpoint, gnabar, gkbar)
+ * Set the active conductances in the current dendrite.
+ * Assumes distance origin has been set appropriately and
+ * that this section has at least some conductances.
+ */
+proc active_set_conductances() { local breakpt
+  // Find the point at which the conductances start.
+  breakpt = ($1 - distance(0.0)) / L
+  if (breakpt < 0.0) breakpt = 0.0
+  if (breakpt > 1.0) breakpt = 1.0 // This shouldn't happen.
+
+  // Now set the conductances.
+  // Beyond the breakpoint, normal conductance.
+  if (breakpt < 1.0) {  // NEURON gives error for range (1.0:1.0).
+    gnabar_hh3(breakpt:1.0) = $2:$2
+    gkbar_hh3(breakpt:1.0) = $3:$3
+    gl_hh3(breakpt:1.0) = $4:$4
+  }
+
+  // Closer than the breakpoint, zero conductance.  If the breakpoint
+  // is the exact middle of a segment, the whole segment has g=zero.
+  if (breakpt > 0.0) {  // NEURON gives error for range (0.0:0.0).
+    gnabar_hh3(0.0:breakpt) = 0.0:0.0
+    gkbar_hh3(0.0:breakpt) = 0.0:0.0
+    gl_hh3(0.0:breakpt) = 0.0:0.0
+  }
+}
+
+
+/*
+ * active_init()
+ * Initialize the active conductances for the current run.
+ */
+proc active_init() {
+  soma {
+    insert hh3
+    gnabar_hh3 = active_soma_gnabar
+    gkbar_hh3 = active_soma_gkbar
+    gl_hh3 = active_soma_gl
+  }
+
+  // Measure distances for cutoff from the 0.0 end of the soma.
+  soma distance()
+
+  forsec axon_list {
+    insert hh3
+    gnabar_hh3 = active_axon_gnabar
+    gkbar_hh3 = active_axon_gkbar
+    gl_hh3 = active_axon_gl
+  }
+  forsec basal_list {
+    if (distance(1.0) > active_basal_cutoff) {
+      insert hh3  // At least parts of this section are outside cutoff.
+      active_set_conductances(active_basal_cutoff, active_dend_gnabar, \
+			      active_dend_gkbar, active_dend_gl)
+    } else if (ismembrane("hh3")) {
+      // An old conductance is sitting here.  Turn it off.
+      gnabar_hh3 = 0.0
+      gkbar_hh3 = 0.0
+      gl_hh3 = 0.0
+    }
+  }
+  forsec apical_list {
+    if (distance(1.0) > active_apical_cutoff) {
+      insert hh3  // At least parts of this section are outside cutoff.
+      active_set_conductances(active_apical_cutoff, active_dend_gnabar, \
+			      active_dend_gkbar, active_dend_gl)
+    } else if (ismembrane("hh3")) {
+      // An old conductance is sitting here.  Turn it off.
+      gnabar_hh3 = 0.0
+      gkbar_hh3 = 0.0
+      gl_hh3 = 0.0
+    }
+  }
+}
+
+
+/*
+ * active_menu()
+ * Build a menu to allow viewing and manipulation of active channel
+ * parameters.  Assumes the GUI is available and loaded.
+ */
+proc active_menu() {
+  xpanel("Active Membrane Parameters")
+  xlabel("Somatic")
+  xvalue("g: Fast Na", "active_soma_gnabar", 1)
+  xvalue("g: K DR", "active_soma_gkbar", 1)
+  xvalue("g: HH leak", "active_soma_gl", 1)
+  xlabel("Dendritic")
+  xvalue("g: Fast Na", "active_dend_gnabar", 1)
+  xvalue("g: K DR", "active_dend_gkbar", 1)
+  xvalue("g: HH leak", "active_dend_gl", 1)
+  xlabel("Axonal")
+  xvalue("g: Fast Na", "active_axon_gnabar", 1)
+  xvalue("g: K DR", "active_axon_gkbar", 1)
+  xvalue("g: HH leak", "active_axon_gl", 1)
+  xlabel("")
+  xvalue("Basal Cutoff Distance", "active_basal_cutoff", 1)
+  xvalue("Apical Cutoff Distance", "active_apical_cutoff", 1)
+  xpanel()
+}

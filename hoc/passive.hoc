@@ -1,0 +1,99 @@
+/* $Id: passive.hoc,v 1.4 1999/05/21 22:50:21 karchie Exp $
+ * Set up the passive membrane properties of the cell.
+ */
+
+// Set default values for parameters.
+global_Ra = 250			// Ohm cm
+global_Cm = 1.0			// uF/cm^2
+seg_per_char_l = 10		// segments per characteristic length
+min_seg_per_sect = 1            // minimum number of segments per section
+                                // (only applies to input sections)
+
+E_leak = -70			// mV
+
+rm = 1e4			// Ohm cm^2
+
+// Symbolic constants for geometry adjustments
+passive_adjust_done = 0
+passive_adjust_normal = 5
+passive_adjust_no_morph_xform = 4  // don't adjust for missing spines
+
+passive_verbose = 0
+
+// flag for geometry adjustments
+passive_adjust = passive_adjust_normal
+
+// passive_init: set passive membrane properties
+proc passive_init() { local F, len_const, cell_nseg
+  cell_nseg = 0
+
+  forall {
+    // Set the axial resistance first.
+    Ra = global_Ra
+    
+    // If this is the first time through, make appropriate adjustments,
+    // but don't futz with the axon.
+    if (passive_adjust && !issection("axon_.*")) {
+      if (passive_adjust > passive_adjust_no_morph_xform) {
+	if (passive_verbose) {
+	  print "Adjusting to compensate for missing spines."
+	}
+	
+	// Adjust L and diam to pretend we have spines.
+	F = 1 + .15/diam
+	L = L * F^(2/3)
+	diam = diam * F^(1/3)
+      }
+      
+      // # of segments is a specified multiple of the ratio of the
+      // section length to the characteristic length.
+      len_const = sqrt((rm/Ra)*(diam/4e-4))
+      nseg = 1 + int(seg_per_char_l * L / len_const)
+    }
+    cell_nseg = cell_nseg + nseg
+  }
+  
+  if (passive_adjust) {
+    forsec input_list {
+      // input sections might need more segments
+      if (nseg < min_seg_per_sect) {
+        cell_nseg = cell_nseg - nseg + min_seg_per_sect
+        nseg = min_seg_per_sect
+      }
+    }
+  }
+  
+  forall {   
+    // Now that the number of segments has been worked out, we can
+    // insert the passive membrane mechanisms.
+    insert pas
+    e_pas = E_leak
+    g_pas = 1/rm
+    
+    // Now set the capacitance.
+    cm = global_Cm 
+  }
+  
+  // Print the total number of segments in the cell.
+  if (passive_verbose) {
+    print "Total segments in cell: ", cell_nseg
+  }
+  
+  // Don't calculate spine adjustments and segment count next time.
+  passive_adjust = passive_adjust_done
+}
+  
+
+proc passive_menu() {
+  xpanel("Passive Membrane Parameters")
+
+  xvalue("Capacitance (uF/cm^2)", "global_Cm", 1)
+  xvalue("Axial Resistivity (Ohm-cm)", "global_Ra", 1)
+  xvalue("Segments per char. length", "seg_per_char_l", 1)
+  xvalue("Min segments per input section", "min_seg_per_sect", 1)
+
+  xlabel("")
+  xvalue("Membrane Resistivity (Ohm-cm^2)", "rm", 1)
+
+  xpanel()
+}

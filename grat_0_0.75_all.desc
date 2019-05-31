@@ -1,0 +1,28 @@
+> but then i am stuck at the file chooser prompt which is asking
+> for a data file with a ".in" suffix. I presume this is created by
+> an .snm file.
+
+I'm attaching two .in files, one for optimally oriented gratings at
+assorted phases (I think that fig. 7 was the first line of
+grat_0_0.75_all.in), and one for cross-oriented gratings.  I'm also
+attaching the input resistances (.Rin) file for geom.hoc.
+
+I'm a little concerned about (though not firmly opposed to) making this
+particular set of models widely available, mostly because I've got a much
+better system now.  The new system (http://lnc.usc.edu/snv) is documented
+(more or less), much more powerful (handles time-varying inputs, multiple
+sets of synapses, etc.), and I'm actively using and maintaining it.  The
+old system isn't really any easier to use, and I haven't used it for over
+two years so I don't remember how it works and don't want to have to
+support it.
+
+There are two downsides to the new system: (1) we haven't finished any
+papers using it yet, and (2) right now it will only work under UNIX.
+
+I understand the appeal to allowing users to run simulations that have
+already appeared in papers.  But I'm much more willing to help people get
+their own new simulations running using SNV.  (Then again, I'm in
+something of a hurry to finish my dissertation, so promises of support
+from me are probably worthless just now.)
+
+  - Kevin

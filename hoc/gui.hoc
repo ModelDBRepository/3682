@@ -1,0 +1,8 @@
+/* $Id: gui.hoc,v 1.1 1998/05/06 22:28:40 karchie Exp $
+ * Initialize to run interactive simulations.
+ */
+
+gui = 1				// GUI is active.
+batch = 0
+load_proc("nrnmainmenu")
+nrnmainmenu()

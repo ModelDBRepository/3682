@@ -1,0 +1,25 @@
+// Final things that need to be attended to.
+
+// Parameters are set elsewhere.
+xopen("params.hoc")
+
+// Use lots of segments; this gives us one synapse per segment.
+min_seg_per_sect = 16
+
+// Don't add spines.
+passive_adjust = passive_adjust_no_morph_xform
+
+// Only place synapses on the dendrites in the input compartment list.
+iterator synm_sections() {
+  forsec input_list {
+    iterator_statement
+  }
+}
+
+// This is sometimes a useful diagnostic
+//proc syns_display() {
+//  for (i = 0; i < num_syns; i = i + 1) {
+//    print syns[i].idx, syns[i].mean_ia_time
+//  }
+//}
+

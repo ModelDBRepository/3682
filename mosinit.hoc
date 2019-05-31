@@ -1,0 +1,24 @@
+// The system is normally launched with
+//	 nrngui hoc/run-gui.hoc
+// which pops up file choosers for selecting the desired
+// *.in and *.Rin files.
+// This mosinit.hoc file automatically loads the geom.Rin and grat_0_0.75.all.in
+// files in order to run a simulation of Fig 7a without user intervention.
+
+load_file("nrngui.hoc")
+strdef batch_in_file_name, batch_inres_file_name
+batch_in_file_name = "../grat_0_0.75_all.in"
+batch_inres_file_name = "../geom.Rin"
+gui = 0
+batch = 1
+load_file("hoc/geom.hoc")
+load_file("hoc/main.hoc")
+load_file("hoc/post.hoc")
+load_file("mosinit.ses")
+
+synapses_display = Shape[0]
+//synapses_display.show(1)
+//synapses_display.flush()
+
+gui = 1
+run()

@@ -1,0 +1,66 @@
+// Set up the morphology: 4 "basal" dendrites
+input_diam = 1.5
+input_len = 200
+
+create b0
+b0 {
+  diam = input_diam
+  L = input_len
+}
+create b1
+b1 {
+  diam = input_diam
+  L = input_len
+}
+create b2
+b2 {
+  diam = input_diam
+  L = input_len
+}
+create b3
+b3 {
+  diam = input_diam
+  L = input_len
+}
+
+create soma
+access soma
+L = 16
+diam = 16
+
+// Correct for missing dendrites.
+create apical_correct
+apical_correct {
+  diam = 5
+  L = 500
+}
+
+// Hook the branches to the soma.
+connect b0(0), 0.5
+connect b1(0), 0.5
+connect b2(0), 0.5
+connect b3(0), 0.5
+connect apical_correct(0), 1.0
+
+// Set up the lists.  Include axon_list even though there's no axon.
+objref apical_list, basal_list, axon_list
+apical_list = new SectionList()
+basal_list = new SectionList()
+axon_list = new SectionList()
+
+// Input dendrites are basal.
+b0 basal_list.append()
+b1 basal_list.append()
+b2 basal_list.append()
+b3 basal_list.append()
+
+// Apical correction is apical.
+apical_correct apical_list.append()
+
+// Make a separate list for input dendrites.
+objref input_list
+input_list = new SectionList()
+b0 input_list.append()
+b1 input_list.append()
+b2 input_list.append()
+b3 input_list.append()

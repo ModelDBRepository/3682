@@ -1,0 +1,248 @@
+/* $Id: synapses.hoc,v 1.8 1999/07/14 22:49:30 karchie Exp $
+ * Place excitatory glutamatergic synapses (combined AMPA and NMDA)
+ * on a cell based on the input array specified in a file.  This file
+ * began life as a modification of alchemy/synapses.hoc, version 3.3.
+ * 
+ * Peak conductances are scaled by the local input resistance; it is
+ * assumed that there is an input resistance file that lists the R_in
+ * for a set of indexed locations.  NOTE that this is a different
+ * convention than the by-named-section R_in of alchemy/synapses.hoc.
+ * The input resistance file *must* be of the right format.
+ */
+
+xopen("synmap.hoc")
+
+
+synapses_min_inres = 20
+synapses_mean_ia = 25
+
+synapses_default_phase = -1.0      // negative -> Poisson
+
+synapses_nmda_gmax = 0.5
+synapses_ampa_gmax = 0.05
+
+syn_index_count = 0
+
+objref nil			// Used to delete objects.
+strdef synapses_tmp_str
+strdef synapses_sect_name
+
+
+// Define an array that maps from [0,1] into a spectrum.
+// Note that the color indices are:
+// 0 = white
+// 1 = black
+// 2 = red
+// 3 = blue
+// 4 = green
+// 5 = orange
+// 6 = brown
+// 7 = purple
+// 8 = yellow
+// 9 = gray
+// 10 = white
+// ordering: black gray purple blue green yellow orange red
+//           1     9    7      3    4     8      5      2
+spect_color_count = 8
+double spect_color_map[spect_color_count + 1]
+spect_color_map[0] = 1 // black
+spect_color_map[1] = 9 // gray
+spect_color_map[2] = 7 // purple
+spect_color_map[3] = 3 // blue
+spect_color_map[4] = 4 // green
+spect_color_map[5] = 8 // yellow
+spect_color_map[6] = 5 // orange
+spect_color_map[7] = 2 // red
+spect_color_map[8] = 2 // red: allow synapse value 1.0
+
+// Define a menu to set synapse parameters.
+proc synapses_menu() {
+  xpanel("Synapses")
+  xlabel("General")
+  xvalue("Minimum R_in (for scaling)", "synapses_min_inres", 1)
+  xvalue("Mean Interarrival (usec)", "synapses_mean_ia", 1)
+  xlabel("Excitatory")
+  xvalue("NMDA unscaled g_max (uS)", "synapses_nmda_gmax", 1)
+  xvalue("AMPA unscaled g_max (uS)", "synapses_ampa_gmax", 1)
+  
+  xpanel()
+}
+
+
+// Allow the user to select an input file.
+proc synapses_select_input_file() { local new_array_size
+  if ($o1.isopen()) {
+    $o1.close()
+  }
+  if (gui) {
+    $o1.chooser("r", "Select a data file", "*.in", "Accept", "Cancel",\
+		"./image/")
+    $o1.chooser()
+  } else {
+    $o1.ropen($s2)
+  }
+  new_array_size = $o1.scanvar()
+  if (input_array_size == 0) input_array_size = new_array_size
+  if (input_array_size < new_array_size) {
+    print "Error: new file must contain vectors no larger than ", \
+      input_array_size
+    stop
+  }
+  input_array_size = new_array_size
+  syn_index_scale = syn_index_count / input_array_size
+  num_input_lines = $o1.scanvar()
+}
+
+
+// Open the input file and get details about the input vectors.
+objref infile
+infile = new File()
+if (gui) {
+  synapses_select_input_file(infile)
+}
+if (batch) {
+	synapses_select_input_file(infile, batch_in_file_name)
+}
+
+// Open the input resistances file.
+objref inres_file
+inres_file = new File()
+if (gui) {
+  inres_file.chooser("r", "Select an input resistances file", "*.Rin",\
+		     "Accept", "Cancel", "Rin/")
+  inres_file.chooser()
+}
+if (batch) {
+  inres_file.ropen(batch_inres_file_name)
+}
+
+// Read the input resistances into the local array.
+syn_index_count = inres_file.scanvar()
+double syn_inres[syn_index_count]
+for (i = 0; i < syn_index_count; i = i + 1) {
+  syn_inres[i] = inres_file.scanvar()
+  if (syn_inres[i] < synapses_min_inres) {
+    syn_inres[i] = synapses_min_inres
+  }
+}
+syn_index_scale = syn_index_count / input_array_size
+
+// Declare the synapse object variables.
+objref syns[input_array_size]
+num_syns = 0
+
+
+objref synapses_display
+if (gui) {
+  // Provide a graphical display of the synapses.
+  synapses_display = new Shape()
+  synapses_display.show(1)
+  synapses_display.flush()
+}
+
+// Stub: redefine to graph local events at synapses.
+proc synapses_graph_syns() { }
+
+// Redefine the synapse placement procedure.
+// Argument 1 is the location of the synapse on the branch.
+// Argument 2 is the frequency (in Hz) of synapse events.
+// Argument 3 is the weight of the synaptic conductance.
+//    Weight value 0 (zero) has a special meaning: the synapse is "silent,"
+//    i.e. has zero AMPA conductance and full (weight 1) NMDA conductance.
+// Argument 4 is the index of this synapse, used for bookkeeping.
+proc synm_insert_synapse() { local inres_scale
+  
+  // Place a synapse.
+  syns[num_syns] = new rGluSc($1)
+  syns[num_syns].idx = $4
+  syns[num_syns].phase = synapses_default_phase
+  syns[num_syns].mean_ia_time = 1000/$2
+  
+  // Get the input resistance for this synapse index.
+  if ($3 == 0) {
+    // Weight 0 => this is a "silent" synapse.
+    syns[num_syns].gmax_NMDA = \
+        synapses_nmda_gmax / syn_inres[$4 * syn_index_scale]
+    syns[num_syns].gmax_AMPA = 0
+  } else {
+    inres_scale = $3 / syn_inres[$4 * syn_index_scale]
+    syns[num_syns].gmax_NMDA = synapses_nmda_gmax * inres_scale
+    syns[num_syns].gmax_AMPA = synapses_ampa_gmax * inres_scale
+  }
+
+  if (gui) {
+    // Clip frequency to 100 for purposes of coloring.
+    if ($2 > 100) {
+      synapses_colorfreq = 100
+    } else {
+      synapses_colorfreq = $2
+    }
+    
+    // Show the synapse in the display.
+    synapses_display.point_mark(syns[num_syns], \
+                spect_color_map[synapses_colorfreq*spect_color_count/100])
+    synapses_display.flush()
+    synapses_graph_syns($1)
+  }
+  
+  num_syns = num_syns + 1
+}
+
+
+proc synapses_init() { local flag
+  if (num_syns > 0) {
+    // We didn't close out after the last simulation.  Do so now.
+    synapses_clear()
+  }
+
+  if (infile.eof()) {
+    if (gui) {
+      flag = boolean_dialog("End of input reached.  Select new input file?", \
+			    "Yes", "No")
+      if (flag) {
+	infile.seek()
+	synapses_select_input_file(inres_file)
+      } else {
+	infile.seek()
+	infile.scanvar()		// Make sure array is sm
+	infile.scanvar()		// Skip past input line count.
+	print "Rewound to beginning of input file."
+      }
+    } else return
+  }
+
+  // Place the excitatory synapses.
+  synm_place_synapses(input_array_size, infile)
+}
+
+
+// Clear out the old synapses.
+proc synapses_clear() {
+  if (gui) {
+    // Remove all the marks from the display.
+    synapses_display.point_mark_remove()
+    synapses_display.flush()
+  }
+
+  // Get rid of old synapses.
+  while (num_syns > 0) {
+    num_syns = num_syns - 1
+    syns[num_syns].gmax_NMDA = 0.0
+    syns[num_syns].gmax_AMPA = 0.0
+    syns[num_syns] = nil
+  }
+}
+
+
+// Print the scores from all synapses.
+objref scorefile
+proc synapses_write_scores() {
+  // Open the score file.
+  scorefile = new File()
+  scorefile.wopen($s1)
+
+  for (i = 0; i < num_syns; i = i + 1) {
+    scorefile.printf("%d %g\n", syns[i].idx, syns[i].score)
+  }
+  scorefile.close()
+}

@@ -1,0 +1,84 @@
+/* $Id: main.hoc,v 1.4 1999/08/20 00:57:20 karchie Exp $
+ * Load a full simulation.
+ * Various parts of the job have been modularized into other files:
+ *   passive.hoc          Sets up passive membrane properties
+ *   active.hoc           Sets up voltage-dependent mechanisms
+ *   synapses.hoc         Sets up inputs
+ */
+
+// Geometry must be loaded before now.
+
+// Membrane properties
+xopen("passive.hoc")
+xopen("active.hoc")
+xopen("synapses.hoc")
+
+
+// Global parameters
+celsius = 37
+vm = -70
+tstop = 250
+
+spike_threshold = 0
+
+// Set up menus if the GUI is active.
+if (gui) {
+  nrncontrolmenu()
+
+  xpanel("Parameters")
+  xbutton("Passive Properties", "passive_menu()")
+  xbutton("Active Channels", "active_menu()")
+  xbutton("Synapses", "synapses_menu()")
+  xpanel()
+
+  // We always want a V-plot at the soma.
+  newPlotV()
+}
+
+
+/* run()
+ * replaces run() in stdrun.hoc
+ */
+proc run() {
+  stdinit()
+  setdt()
+  main_spike_count = 0
+  continuerun(tstop)
+  end_run()
+}
+
+proc end_run() {
+  print "Total spikes: ", main_spike_count
+}
+
+
+/* init()
+ * Initialization procedure -- replaces init() in stdrun.hoc
+ */
+proc init () {
+  // Call the module initialization procedures.
+  passive_init()
+  active_init()
+  synapses_init()
+
+  // Now start the simulation.
+  t = 0
+  finitialize(vm)
+}
+
+
+/* advance()
+ * Called on every timestep -- replaces advance() in stdrun.hoc
+ */
+proc advance() { local last_v
+  last_v = soma.v
+  fadvance()
+  if (soma.v >= spike_threshold && last_v < spike_threshold) {
+    report_spike()
+  }
+}
+
+proc report_spike() {
+    print "Spike at ", t
+    main_spike_count = main_spike_count + 1
+}
